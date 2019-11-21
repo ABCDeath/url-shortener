@@ -1,0 +1,13 @@
+{
+	"comment": "",
+	"ignore": "test",
+	"package": [
+		{
+			"checksumSHA1": "NamzkzoWIDIjzMWjd+0KqOCA6nw=",
+			"path": "github.com/gin-gonic/gin",
+			"revision": "db9174ae0c2587fe1c755def0f88cb9aba9e9641",
+			"revisionTime": "2019-11-01T02:47:40Z"
+		}
+	],
+	"rootPath": "github.com/ABCDeath/url-shorten"
+}
