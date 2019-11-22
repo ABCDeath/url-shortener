@@ -3,6 +3,7 @@ package main
 import (
     "crypto/md5"
     "fmt"
+    "log"
     "time"
 )
 
@@ -58,14 +59,14 @@ func SaveUrl(url string, keep_for int) *UrlDB {
 
     set_deletion_time(url_database[url_code], keep_for)
 
-    fmt.Printf("Save url <%s>: <%v> delete at %v\n", url, url_code, url_database[url_code].DeleteAt)
+    log.Printf("Save url <%s>: <%v> delete at %v\n", url, url_code, url_database[url_code].DeleteAt)
 
     return url_database[url_code]
 }
 
 
 func GetUrl(url_code string) (string, bool) {
-    fmt.Printf("Get url: %v from %v\n", url_code, url_database)
+    log.Printf("Get url: %v from %v\n", url_code, url_database)
     url_instance, ok := url_database[url_code]
     if !ok {
         return "", false
