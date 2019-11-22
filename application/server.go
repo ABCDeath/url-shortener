@@ -1,9 +1,9 @@
 package main
 
 import (
-	"net/http"
+    "crypto/md5"
 	"fmt"
-    "strconv"
+    "net/http"
 	"github.com/gin-gonic/gin"
 )
 
@@ -16,6 +16,7 @@ type UrlRequest struct {
 
 type UrlDB struct {
     Url string
+    AccessCode string
     AliveDays int
     // todo: replace with timestamp or something
     DeleteAt int
@@ -23,9 +24,9 @@ type UrlDB struct {
 
 
 const HOST = "http://127.0.0.1:8000"
+const URL_CODE_LEN = 6
 
-var url_id_count = uint64(1)
-var url_database = map[uint64]UrlDB{}
+var url_database = map[string]UrlDB{}
 
 
 func ParseMarshalError(err error) {
@@ -33,26 +34,42 @@ func ParseMarshalError(err error) {
 }
 
 
-func SaveUrl(url string, alive int) uint64 {
-    url_id := url_id_count
-    url_database[url_id] = UrlDB{Url: url, AliveDays: alive}
-    url_id_count++
-
-    fmt.Printf("Save url <%s> for %v days: <%v>\n", url, alive, url_id)
-
-    return url_id
+func generate_url_code(url string) string {
+    for {
+        url_md5 := fmt.Sprintf("%x", md5.Sum([]byte(url)))
+        for i := 0; i < md5.Size * 2 - URL_CODE_LEN; i++ {
+            url_id := url_md5[i:i + URL_CODE_LEN]
+            if _, ok := url_database[url_id]; !ok {
+                return url_id
+            }
+        }
+    }
 }
 
 
-func GetUrl(url_id uint64) (string, bool) {
-    fmt.Printf("Get url: %v from %v\n", url_id, url_database)
-    url_instance, ok := url_database[url_id]
+func SaveUrl(url string, alive int) string {
+    url_code := generate_url_code(url)
+    url_database[url_code] = UrlDB{
+        Url: url,
+        AccessCode: url_code,
+        AliveDays: alive,
+    }
+
+    fmt.Printf("Save url <%s> for %v days: <%v>\n", url, alive, url_code)
+
+    return url_code
+}
+
+
+func GetUrl(url_code string) (string, bool) {
+    fmt.Printf("Get url: %v from %v\n", url_code, url_database)
+    url_instance, ok := url_database[url_code]
     if !ok {
         return "", false
     }
 
     if url_instance.AliveDays == 0 {
-        delete(url_database, url_id)
+        delete(url_database, url_code)
     }
 
     return url_instance.Url, true
@@ -66,10 +83,10 @@ func UrlAddHandler(ctx *gin.Context) {
         return
     }
 
-    url_id := SaveUrl(body.Url, body.AliveDays)
+    url_code := SaveUrl(body.Url, body.AliveDays)
 
     response := gin.H{
-        "url": fmt.Sprintf("%s/%v", HOST, url_id),
+        "url": fmt.Sprintf("%s/%v", HOST, url_code),
         "alive": fmt.Sprintf("%v days", body.AliveDays),
     }
 
@@ -78,15 +95,11 @@ func UrlAddHandler(ctx *gin.Context) {
 
 
 func UrlGetHandler(ctx *gin.Context) {
-    url_id, err := strconv.ParseUint(ctx.Param("url_id")[1:], 10, 64)
-    if err != nil {
-        ctx.JSON(http.StatusBadRequest, gin.H{"error": url_id})
-        return
-    }
+    url_code := ctx.Param("url_code")[1:]
 
-    url, ok := GetUrl(url_id)
+    url, ok := GetUrl(url_code)
     if !ok {
-        ctx.JSON(http.StatusNotFound, gin.H{"error": url_id})
+        ctx.JSON(http.StatusNotFound, gin.H{"error": url_code})
         return
     }
 
@@ -100,7 +113,7 @@ func main() {
     router := gin.Default()
 
     router.POST("/url/add", UrlAddHandler)
-    router.GET("/*url_id", UrlGetHandler)
+    router.GET("/*url_code", UrlGetHandler)
 
     router.Run(":8000")
 }
