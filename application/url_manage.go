@@ -3,8 +3,8 @@ package main
 import (
     "context"
     "crypto/md5"
+    "errors"
     "fmt"
-    "log"
     "time"
 
     "go.mongodb.org/mongo-driver/bson"
@@ -24,7 +24,7 @@ const URL_CODE_LEN = 6
 const URL_COLLECTION = "url"
 
 
-func generate_url_code(url string, collection *mongo.Collection) string {
+func generate_url_code(url string, collection *mongo.Collection) (string, error) {
     url_md5 := fmt.Sprintf("%x", md5.Sum([]byte(url)))
     var url_instance UrlDB
 
@@ -33,15 +33,15 @@ func generate_url_code(url string, collection *mongo.Collection) string {
 
         err := collection.FindOne(context.TODO(), bson.D{{"_id", url_id}}).Decode(&url_instance)
         if err != nil {
-            return url_id
+            return url_id, nil
         }
 
         if url_instance.Url == url {
-            return url_instance.Id
+            return url_instance.Id, nil
         }
     }
 
-    return ""
+    return "", fmt.Errorf("Error generating url short code")
 }
 
 
@@ -61,38 +61,39 @@ func set_deletion_time(url_instance *UrlDB, keep_for int) {
 }
 
 
-func SaveUrl(url string, keep_for int) *UrlDB {
+func SaveUrl(url string, keep_for int) (*UrlDB, error) {
     collection := GetDBCollection(URL_COLLECTION)
 
-    url_code := generate_url_code(url, collection)
+    url_code, err := generate_url_code(url, collection)
+    if err != nil {
+        return nil, err
+    }
+
     url_instance := UrlDB{Id: url_code, Url: url}
 
     set_deletion_time(&url_instance, keep_for)
 
-    _, err := collection.InsertOne(context.TODO(), url_instance)
+    _, err = collection.InsertOne(context.TODO(), url_instance)
     if err != nil {
-        log.Fatalf("Error inserting url: %v\n", err)
+        return nil, fmt.Errorf("Error inserting url: %v\n", err)
     }
 
-    return &url_instance
+    return &url_instance, nil
 }
 
 
-func GetUrl(url_code string) (string, bool) {
+func GetUrl(url_code string) (string, error) {
     collection := GetDBCollection(URL_COLLECTION)
 
     var url_instance UrlDB
     err := collection.FindOne(context.TODO(), bson.D{{"_id", url_code}}).Decode(&url_instance)
     if err != nil {
-        return "", false
+        return "", errors.New("Not found")
     }
 
     if url_instance.DeleteAt.IsZero() {
-        _, err := collection.DeleteOne(context.TODO(), bson.D{{"_id", url_code}})
-        if err != nil {
-            log.Fatalf("Error deleting url: %v\n", err)
-        }
+        collection.DeleteOne(context.TODO(), bson.D{{"_id", url_code}})
     }
 
-    return url_instance.Url, true
+    return url_instance.Url, nil
 }

@@ -27,9 +27,9 @@ func UrlAddHandler(ctx *gin.Context) {
         return
     }
 
-    url_instance := SaveUrl(body.Url, body.KeepForDays)
-    if url_instance == nil {
-        ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("")})
+    url_instance, err := SaveUrl(body.Url, body.KeepForDays)
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
         return
     }
 
@@ -45,8 +45,8 @@ func UrlAddHandler(ctx *gin.Context) {
 func UrlGetHandler(ctx *gin.Context) {
     url_code := ctx.Param("url_code")[1:]
 
-    url, ok := GetUrl(url_code)
-    if !ok {
+    url, err := GetUrl(url_code)
+    if err != nil {
         ctx.JSON(http.StatusNotFound, gin.H{"error": url_code})
         return
     }
