@@ -1,36 +1,47 @@
 package main
 
 import (
+    "context"
     "crypto/md5"
     "fmt"
     "log"
     "time"
+
+    "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/mongo"
 )
 
 
 type UrlDB struct {
+    Id string `bson:"_id",omitempty`
     Url string
-    AccessCode string
-    KeepInfinitely bool
-    DeleteAt time.Time
+    KeepInfinitely bool `bson:"keep_infinitely"`
+    DeleteAt time.Time `bson:"delete_at"`
 }
 
 
 const URL_CODE_LEN = 6
+const URL_COLLECTION = "url"
 
-var url_database = map[string]*UrlDB{}
 
+func generate_url_code(url string, collection *mongo.Collection) string {
+    url_md5 := fmt.Sprintf("%x", md5.Sum([]byte(url)))
+    var url_instance UrlDB
 
-func generate_url_code(url string) string {
-    for {
-        url_md5 := fmt.Sprintf("%x", md5.Sum([]byte(url)))
-        for i := 0; i < md5.Size * 2 - URL_CODE_LEN; i++ {
-            url_id := url_md5[i:i + URL_CODE_LEN]
-            if _, ok := url_database[url_id]; !ok {
-                return url_id
-            }
+    for i := 0; i < md5.Size * 2 - URL_CODE_LEN; i++ {
+        url_id := url_md5[i:i + URL_CODE_LEN]
+
+        err := collection.FindOne(context.TODO(), bson.D{{"_id", url_id}}).Decode(&url_instance)
+        if err != nil {
+            return url_id
+        }
+
+        if url_instance.Url == url {
+            return url_instance.Id
         }
     }
+
+    return ""
 }
 
 
@@ -51,29 +62,36 @@ func set_deletion_time(url_instance *UrlDB, keep_for int) {
 
 
 func SaveUrl(url string, keep_for int) *UrlDB {
-    url_code := generate_url_code(url)
-    url_database[url_code] = &UrlDB{
-        Url: url,
-        AccessCode: url_code,
+    collection := GetDBCollection(URL_COLLECTION)
+
+    url_code := generate_url_code(url, collection)
+    url_instance := UrlDB{Id: url_code, Url: url}
+
+    set_deletion_time(&url_instance, keep_for)
+
+    _, err := collection.InsertOne(context.TODO(), url_instance)
+    if err != nil {
+        log.Fatalf("Error inserting url: %v\n", err)
     }
 
-    set_deletion_time(url_database[url_code], keep_for)
-
-    log.Printf("Save url <%s>: <%v> delete at %v\n", url, url_code, url_database[url_code].DeleteAt)
-
-    return url_database[url_code]
+    return &url_instance
 }
 
 
 func GetUrl(url_code string) (string, bool) {
-    log.Printf("Get url: %v from %v\n", url_code, url_database)
-    url_instance, ok := url_database[url_code]
-    if !ok {
+    collection := GetDBCollection(URL_COLLECTION)
+
+    var url_instance UrlDB
+    err := collection.FindOne(context.TODO(), bson.D{{"_id", url_code}}).Decode(&url_instance)
+    if err != nil {
         return "", false
     }
 
     if url_instance.DeleteAt.IsZero() {
-        delete(url_database, url_code)
+        _, err := collection.DeleteOne(context.TODO(), bson.D{{"_id", url_code}})
+        if err != nil {
+            log.Fatalf("Error deleting url: %v\n", err)
+        }
     }
 
     return url_instance.Url, true

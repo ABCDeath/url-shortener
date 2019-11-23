@@ -3,7 +3,6 @@ package main
 import (
     "context"
     "log"
-    "time"
 
     "go.mongodb.org/mongo-driver/mongo"
     "go.mongodb.org/mongo-driver/mongo/options"
@@ -12,32 +11,31 @@ import (
 
 
 var client *mongo.Client
-var ctx, _ = context.WithTimeout(context.Background(), 10 * time.Second)
 
 
 func OpenDBConnection() {
     var err error
     client, err = mongo.NewClient(options.Client().ApplyURI(DATABASE_URL))
     if err != nil {
-        log.Fatal(err)
+        log.Fatalf("Error creating MongoDB client: %v\n", err)
     }
 
-    err = client.Connect(ctx)
+    err = client.Connect(context.TODO())
     if err != nil {
-        log.Fatal(err)
+        log.Fatalf("Error connecting to MongoDB: %v\n", err)
     }
 
-    err = client.Ping(ctx, readpref.Primary())
+    err = client.Ping(context.TODO(), readpref.Primary())
     if err != nil {
-        log.Fatal(err)
+        log.Fatalf("Error ping MongoDB: %v\n", err)
     }
 }
 
 
 func CloseDBConnection() {
-    err := client.Disconnect(ctx)
+    err := client.Disconnect(context.TODO())
     if err != nil {
-        log.Fatal(err)
+        log.Fatalf("Error disconnecting from MongoDB: %v\n", err)
     }
 }
 

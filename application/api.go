@@ -34,7 +34,7 @@ func UrlAddHandler(ctx *gin.Context) {
     }
 
     response := gin.H{
-        "url": fmt.Sprintf("%s/%v", HOST, url_instance.AccessCode),
+        "url": fmt.Sprintf("%s/%v", HOST, url_instance.Id),
         "valid_until": fmt.Sprintf("%v", url_instance.DeleteAt),
     }
 
