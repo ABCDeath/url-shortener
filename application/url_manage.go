@@ -8,6 +8,7 @@ import (
     "time"
 
     "go.mongodb.org/mongo-driver/bson"
+    "go.mongodb.org/mongo-driver/bson/primitive"
     "go.mongodb.org/mongo-driver/mongo"
 )
 
@@ -15,7 +16,7 @@ import (
 type UrlDB struct {
     Id string `bson:"_id",omitempty`
     Url string
-    KeepInfinitely bool `bson:"keep_infinitely"`
+    DeleteAfterGet bool `bson:"delete_after_get"`
     DeleteAt time.Time `bson:"delete_at"`
 }
 
@@ -25,43 +26,59 @@ const URL_COLLECTION = "url"
 
 
 func generate_url_code(url string, collection *mongo.Collection) (string, error) {
-    url_md5 := fmt.Sprintf("%x", md5.Sum([]byte(url)))
-    var url_instance UrlDB
+    var url_with_objectid string
+    var url_md5 string
 
-    for i := 0; i < md5.Size * 2 - URL_CODE_LEN; i++ {
-        url_id := url_md5[i:i + URL_CODE_LEN]
+    for {
+        url_with_objectid = fmt.Sprintf("%s%s", url, primitive.NewObjectID().Hex())
+        url_md5 = fmt.Sprintf("%x", md5.Sum([]byte(url_with_objectid)))
+        var url_instance UrlDB
 
-        err := collection.FindOne(context.TODO(), bson.D{{"_id", url_id}}).Decode(&url_instance)
-        if err != nil {
-            return url_id, nil
-        }
+        for i := 0; i < md5.Size * 2 - URL_CODE_LEN; i++ {
+            url_id := url_md5[i:i + URL_CODE_LEN]
 
-        if url_instance.Url == url {
-            return url_instance.Id, nil
+            err := collection.FindOne(
+                context.TODO(), bson.D{{"_id", url_id}}).Decode(&url_instance)
+            if err != nil {
+                return url_id, nil
+            }
         }
     }
-
-    return "", fmt.Errorf("Error generating url short code")
 }
 
 
-func set_deletion_time(url_instance *UrlDB, keep_for int) {
-    if keep_for < 0 {
-        url_instance.KeepInfinitely = true
-    } else if keep_for == 0 {
-        url_instance.DeleteAt = time.Time{}
+func set_deletion_time(url_instance *UrlDB, keep_for uint) {
+    var keep_hours uint
+
+    if keep_for == 0 {
+        url_instance.DeleteAfterGet = true
+        keep_hours = 240
     } else {
-        keep_hours, err := time.ParseDuration(fmt.Sprintf("%vh", keep_for * 24))
-        if err != nil {
-            return
-        }
-
-        url_instance.DeleteAt = time.Now().UTC().Add(keep_hours)
+        keep_hours = keep_for * 24
     }
+
+    keep_duration, _ := time.ParseDuration(fmt.Sprintf("%vh", keep_hours))
+    url_instance.DeleteAt = time.Now().UTC().Add(keep_duration)
 }
 
 
-func SaveUrl(url string, keep_for int) (*UrlDB, error) {
+func get_old_urls() []UrlDB {
+    collection := GetDBCollection(URL_COLLECTION)
+
+    y, m, d := time.Now().UTC().Date()
+    tomorrow := time.Date(y, m, d + 1, 0, 0, 0, 0, time.UTC)
+
+    cursor, _ := collection.Find(
+        context.TODO(), bson.D{{"delete_at", bson.D{{"$lt", tomorrow}}}})
+
+    var urls []UrlDB
+    cursor.All(context.TODO(), &urls)
+
+    return urls
+}
+
+
+func SaveUrl(url string, keep_for uint) (*UrlDB, error) {
     collection := GetDBCollection(URL_COLLECTION)
 
     url_code, err := generate_url_code(url, collection)
