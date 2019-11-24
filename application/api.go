@@ -10,7 +10,7 @@ import (
 
 type UrlRequest struct {
     Url string `form:"url" json:"url" binding:"required"`
-    KeepForDays int `form:"keep_for_days" json:"keep_for_days"`
+    KeepForDays uint `form:"keep_for_days" json:"keep_for_days"`
 }
 
 

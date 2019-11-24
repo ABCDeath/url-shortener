@@ -91,9 +91,36 @@ func GetUrl(url_code string) (string, error) {
         return "", errors.New("Not found")
     }
 
-    if url_instance.DeleteAt.IsZero() {
+    if url_instance.DeleteAfterGet {
         collection.DeleteOne(context.TODO(), bson.D{{"_id", url_code}})
     }
 
     return url_instance.Url, nil
+}
+
+
+func DeleteOldUrls() {
+    collection := GetDBCollection(URL_COLLECTION)
+
+    var y, d int
+    var m time.Month
+    var tomorrow time.Time
+
+    for {
+        urls := get_old_urls()
+        for _, url := range urls {
+            until_deletion := time.Until(url.DeleteAt)
+
+            if until_deletion > 0 {
+                time.Sleep(until_deletion)
+            }
+
+            collection.DeleteOne(context.TODO(), bson.D{{"_id", url.Id}})
+        }
+
+        y, m, d = time.Now().UTC().Date()
+        tomorrow = time.Date(y, m, d + 1, 0, 0, 0, 0, time.UTC)
+
+        time.Sleep(time.Until(tomorrow))
+    }
 }

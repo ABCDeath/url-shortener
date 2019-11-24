@@ -9,6 +9,8 @@ func main() {
     OpenDBConnection()
     defer CloseDBConnection()
 
+    go DeleteOldUrls()
+
     router := gin.Default()
 
     router.POST("/url/add", UrlAddHandler)
