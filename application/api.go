@@ -14,12 +14,6 @@ type UrlRequest struct {
 }
 
 
-func ParseMarshalError(err error) {
-    // todo
-    return
-}
-
-
 func UrlAddHandler(ctx *gin.Context) {
     var body UrlRequest
     if err := ctx.ShouldBindJSON(&body); err != nil {
