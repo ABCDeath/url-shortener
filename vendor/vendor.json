@@ -9,6 +9,12 @@
 			"revisionTime": "2016-07-06T22:07:25Z"
 		},
 		{
+			"checksumSHA1": "Og+xSPNzVVkjPwJxYwPuxxFBRa4=",
+			"path": "github.com/gin-contrib/cors",
+			"revision": "3b3fe50e639075d4c7e0b25ac204dfa5b1917515",
+			"revisionTime": "2019-11-26T03:12:09Z"
+		},
+		{
 			"checksumSHA1": "NamzkzoWIDIjzMWjd+0KqOCA6nw=",
 			"path": "github.com/gin-gonic/gin",
 			"revision": "db9174ae0c2587fe1c755def0f88cb9aba9e9641",
