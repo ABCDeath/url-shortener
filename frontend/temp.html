@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>URL shortener</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js" async></script>
+    <script src="/app.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <div class="main-container">
+            {{ message }}
+            <div class="url-form-container">
+                <label class="url-form-label">Enter URL:
+                    <input class="url-input">
+                </label>
+                <label class="url-input">How many days URL should be kept? "0" for delete right after the first usage:
+                    <input class="url-keep-input">
+                </label>
+                <button></button>
+            </div>
+
+            <div class="url-code-container">
+                <label class="url-code-label">Short URL:
+                    <input class="url-result">
+                </label>
+                <label class="url-keep-until-label">Would be kept until:
+                    <input class="url-result">
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var app = new Vue({
+          el: '#app',
+          data: {
+            message: 'Hello Vue!'
+          }
+        });
+    </script>
+</body>
+</html>

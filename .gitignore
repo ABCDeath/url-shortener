@@ -3,3 +3,4 @@
 vendor/*/
 database/
 build/
+node_modules/
