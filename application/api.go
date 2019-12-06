@@ -17,13 +17,13 @@ type UrlRequest struct {
 func UrlAddHandler(ctx *gin.Context) {
     var body UrlRequest
     if err := ctx.ShouldBindJSON(&body); err != nil {
-        ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
 
     url_instance, err := SaveUrl(body.Url, body.KeepForDays)
     if err != nil {
-        ctx.JSON(http.StatusBadRequest, gin.H{"error": fmt.Sprintf("%v", err)})
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
         return
     }
 
